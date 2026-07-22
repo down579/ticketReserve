@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kmc.ticketreserve.cart.CartMapper">
+
+    <select id="findActiveSession" resultType="map">
+        SELECT session_id AS sessionId,
+               member_id  AS memberId,
+               goods_id   AS goodsId,
+               sales_id   AS salesId,
+               status,
+               expire_at  AS expireAt
+        FROM tb_session
+        WHERE session_id = #{sessionId}
+          AND status = 'ACTIVE'
+          AND expire_at &gt; NOW()
+    </select>
+
+    <select id="findHoldSeatWithPrice" resultType="com.kmc.ticketreserve.cart.CartMapper$HoldSeatPriceRow">
+        SELECT d.seat_id     AS seatId,
+               d.seat_grade  AS seatGrade,
+               d.floor       AS floor,
+               d.row_no      AS rowNo,
+               d.seat_no     AS seatNo,
+               p.price       AS price,
+               h.hold_expire_at AS holdExpireAt
+        FROM tb_seat_hold h
+        INNER JOIN tb_goods_seatassign_details d
+            ON d.seat_id = h.seat_id
+        LEFT JOIN tb_goods_salesprice p
+            ON p.sales_id = h.sales_id
+           AND p.seat_grade = d.seat_grade
+        WHERE h.session_id = #{sessionId}
+          AND h.sales_id = #{salesId}
+          AND h.seat_id = #{seatId}
+          AND h.status = 'HOLD'
+          AND h.hold_expire_at &gt; NOW()
+    </select>
+
+    <select id="findGoodsNm" resultType="string">
+        SELECT goods_nm
+        FROM tb_goods_master
+        WHERE goods_id = #{goodsId}
+    </select>
+
+    <select id="findSalesPlayInfo" resultType="map">
+        SELECT sales_id AS salesId,
+               goods_id AS goodsId,
+               DATE_FORMAT(play_dt, '%Y-%m-%d') AS playDt,
+               play_tm AS playTm
+        FROM tb_goods_sales
+        WHERE sales_id = #{salesId}
+    </select>
+
+    <update id="expireActiveCartsBySession">
+        UPDATE tb_cart_master
+        SET status = 'EXPIRED'
+        WHERE session_id = #{sessionId}
+          AND status = 'ACTIVE'
+    </update>
+
+    <insert id="insertCartMaster" useGeneratedKeys="true" keyProperty="cartId" keyColumn="cart_id">
+        INSERT INTO tb_cart_master (
+            member_id,
+            session_id,
+            goods_id,
+            sales_id,
+            ticket_cnt,
+            total_amt,
+            status,
+            expire_at
+        ) VALUES (
+            #{memberId},
+            #{sessionId},
+            #{goodsId},
+            #{salesId},
+            #{ticketCnt},
+            #{totalAmt},
+            #{status},
+            #{expireAt}
+        )
+    </insert>
+
+    <update id="updateCartReserveNo">
+        UPDATE tb_cart_master
+        SET reserve_no = #{reserveNo}
+        WHERE cart_id = #{cartId}
+    </update>
+
+    <insert id="insertCartTicket" useGeneratedKeys="true" keyProperty="cartTicketId" keyColumn="cart_ticket_id">
+        INSERT INTO tb_cart_ticket (
+            ticket_no,
+            cart_id,
+            seat_id,
+            seat_grade,
+            floor,
+            row_no,
+            seat_no,
+            price
+        ) VALUES (
+            #{ticketNo},
+            #{cartId},
+            #{seatId},
+            #{seatGrade},
+            #{floor},
+            #{rowNo},
+            #{seatNo},
+            #{price}
+        )
+    </insert>
+
+</mapper>

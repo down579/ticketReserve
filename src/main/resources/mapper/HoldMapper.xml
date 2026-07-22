@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kmc.ticketreserve.hold.HoldMapper">
+
+    <select id="findActiveSession" resultType="map">
+        SELECT session_id AS sessionId,
+               member_id  AS memberId,
+               goods_id   AS goodsId,
+               sales_id   AS salesId,
+               status,
+               expire_at  AS expireAt
+        FROM tb_session
+        WHERE session_id = #{sessionId}
+          AND status = 'ACTIVE'
+          AND expire_at &gt; NOW()
+    </select>
+
+    <select id="findSeatForUpdate" resultType="com.kmc.ticketreserve.hold.HoldMapper$SeatLockRow">
+        SELECT seat_id       AS seatId,
+               seatassign_id AS seatassignId,
+               sales_id      AS salesId,
+               seat_grade    AS seatGrade,
+               floor         AS floor,
+               row_no        AS rowNo,
+               seat_no       AS seatNo,
+               seat_status   AS seatStatus,
+               version       AS version
+        FROM tb_goods_seatassign_details
+        WHERE seat_id = #{seatId}
+          AND sales_id = #{salesId}
+        FOR UPDATE
+    </select>
+
+    <update id="updateSeatToHold">
+        UPDATE tb_goods_seatassign_details
+        SET seat_status = 'HOLD',
+            version = version + 1
+        WHERE seat_id = #{seatId}
+          AND seat_status = 'AVAILABLE'
+          AND version = #{version}
+    </update>
+
+    <update id="decreaseRemainIncreaseHold">
+        UPDATE tb_goods_seatassign
+        SET remain_cnt = remain_cnt - 1,
+            hold_cnt = hold_cnt + 1
+        WHERE seatassign_id = #{seatassignId}
+          AND remain_cnt &gt; 0
+    </update>
+
+    <insert id="insertHold" useGeneratedKeys="true" keyProperty="holdId" keyColumn="hold_id">
+        INSERT INTO tb_seat_hold (
+            session_id,
+            member_id,
+            sales_id,
+            seat_id,
+            status,
+            hold_expire_at
+        ) VALUES (
+            #{sessionId},
+            #{memberId},
+            #{salesId},
+            #{seatId},
+            #{status},
+            #{holdExpireAt}
+        )
+    </insert>
+
+</mapper>

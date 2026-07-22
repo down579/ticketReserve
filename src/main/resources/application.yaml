@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: ticketReserve
+  datasource:
+    url: jdbc:mysql://localhost:3306/ticket_reserve?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: root
+    password: tngkr304
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+ticket:
+  session:
+    ttl-minutes: 10
+  seat-hold:
+    ttl-minutes: 7

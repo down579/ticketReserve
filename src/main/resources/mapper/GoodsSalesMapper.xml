@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kmc.ticketreserve.goods.GoodsSalesMapper">
+
+    <select id="findGoods" resultType="map">
+        SELECT goods_id AS goodsId,
+               goods_nm AS goodsNm,
+               status
+        FROM tb_goods_master
+        WHERE goods_id = #{goodsId}
+    </select>
+
+    <select id="findSalesByGoodsId" resultType="com.kmc.ticketreserve.goods.dto.SalesItemResponse">
+        SELECT s.sales_id   AS salesId,
+               DATE_FORMAT(s.play_dt, '%Y-%m-%d') AS playDt,
+               s.play_tm    AS playTm,
+               s.play_seq   AS playSeq,
+               s.status     AS status,
+               COALESCE(SUM(a.remain_cnt), 0) AS remainCnt
+        FROM tb_goods_sales s
+        LEFT JOIN tb_goods_seatassign a ON a.sales_id = s.sales_id
+        WHERE s.goods_id = #{goodsId}
+          AND s.status = #{status}
+        GROUP BY s.sales_id, s.play_dt, s.play_tm, s.play_seq, s.status
+        ORDER BY s.play_dt, s.play_tm
+    </select>
+
+</mapper>

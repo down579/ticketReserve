@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kmc.ticketreserve.session.SessionMapper">
+
+    <select id="findActiveMember" resultType="map">
+        SELECT member_id AS memberId,
+               status
+        FROM tb_member
+        WHERE member_id = #{memberId}
+          AND status = 'ACTIVE'
+    </select>
+
+    <select id="findGoods" resultType="map">
+        SELECT goods_id AS goodsId,
+               status
+        FROM tb_goods_master
+        WHERE goods_id = #{goodsId}
+    </select>
+
+    <select id="findOpenSales" resultType="map">
+        SELECT sales_id AS salesId,
+               goods_id AS goodsId,
+               status
+        FROM tb_goods_sales
+        WHERE sales_id = #{salesId}
+          AND goods_id = #{goodsId}
+          AND status = 'OPEN'
+    </select>
+
+    <insert id="insertSession">
+        INSERT INTO tb_session (
+            session_id,
+            member_id,
+            goods_id,
+            sales_id,
+            status,
+            expire_at
+        ) VALUES (
+            #{sessionId},
+            #{memberId},
+            #{goodsId},
+            #{salesId},
+            #{status},
+            #{expireAt}
+        )
+    </insert>
+
+</mapper>

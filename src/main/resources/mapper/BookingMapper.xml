@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kmc.ticketreserve.booking.BookingMapper">
+
+    <select id="findActiveCartForUpdate" resultType="map">
+        SELECT cart_id    AS cartId,
+               reserve_no AS reserveNo,
+               member_id  AS memberId,
+               session_id AS sessionId,
+               goods_id   AS goodsId,
+               sales_id   AS salesId,
+               ticket_cnt AS ticketCnt,
+               total_amt  AS totalAmt,
+               status,
+               expire_at  AS expireAt
+        FROM tb_cart_master
+        WHERE cart_id = #{cartId}
+          AND status = 'ACTIVE'
+          AND expire_at &gt; NOW()
+        FOR UPDATE
+    </select>
+
+    <select id="findCartTickets" resultType="com.kmc.ticketreserve.booking.BookingMapper$CartTicketRow">
+        SELECT cart_ticket_id AS cartTicketId,
+               ticket_no      AS ticketNo,
+               seat_id        AS seatId,
+               seat_grade     AS seatGrade,
+               floor          AS floor,
+               row_no         AS rowNo,
+               seat_no        AS seatNo,
+               price          AS price
+        FROM tb_cart_ticket
+        WHERE cart_id = #{cartId}
+        ORDER BY cart_ticket_id
+    </select>
+
+    <select id="findValidHoldId" resultType="long">
+        SELECT hold_id
+        FROM tb_seat_hold
+        WHERE session_id = #{sessionId}
+          AND seat_id = #{seatId}
+          AND status = 'HOLD'
+          AND hold_expire_at &gt; NOW()
+        LIMIT 1
+    </select>
+
+    <select id="findSeatStockForUpdate" resultType="com.kmc.ticketreserve.booking.BookingMapper$SeatStockRow">
+        SELECT seat_id       AS seatId,
+               seatassign_id AS seatassignId,
+               seat_status   AS seatStatus
+        FROM tb_goods_seatassign_details
+        WHERE seat_id = #{seatId}
+        FOR UPDATE
+    </select>
+
+    <insert id="insertBookingMaster" useGeneratedKeys="true" keyProperty="bookingId" keyColumn="booking_id">
+        INSERT INTO tb_booking_master (
+            booking_no,
+            member_id,
+            cart_id,
+            goods_id,
+            sales_id,
+            ticket_cnt,
+            total_amt,
+            pay_amt,
+            pay_status,
+            booking_status,
+            booked_at
+        ) VALUES (
+            #{bookingNo},
+            #{memberId},
+            #{cartId},
+            #{goodsId},
+            #{salesId},
+            #{ticketCnt},
+            #{totalAmt},
+            #{payAmt},
+            #{payStatus},
+            #{bookingStatus},
+            #{bookedAt}
+        )
+    </insert>
+
+    <insert id="insertBookingTicket" useGeneratedKeys="true" keyProperty="bookingTicketId" keyColumn="booking_ticket_id">
+        INSERT INTO tb_booking_ticket (
+            ticket_no,
+            booking_id,
+            seat_id,
+            seat_grade,
+            floor,
+            row_no,
+            seat_no,
+            price,
+            ticket_status
+        ) VALUES (
+            #{ticketNo},
+            #{bookingId},
+            #{seatId},
+            #{seatGrade},
+            #{floor},
+            #{rowNo},
+            #{seatNo},
+            #{price},
+            #{ticketStatus}
+        )
+    </insert>
+
+    <update id="updateSeatToSold">
+        UPDATE tb_goods_seatassign_details
+        SET seat_status = 'SOLD',
+            version = version + 1
+        WHERE seat_id = #{seatId}
+          AND seat_status = 'HOLD'
+    </update>
+
+    <update id="convertHoldToSold">
+        UPDATE tb_goods_seatassign
+        SET hold_cnt = hold_cnt - 1,
+            sold_cnt = sold_cnt + 1
+        WHERE seatassign_id = #{seatassignId}
+          AND hold_cnt &gt; 0
+    </update>
+
+    <delete id="deleteSeatHold">
+        DELETE FROM tb_seat_hold
+        WHERE session_id = #{sessionId}
+          AND seat_id = #{seatId}
+          AND status = 'HOLD'
+    </delete>
+
+    <update id="convertCart">
+        UPDATE tb_cart_master
+        SET status = 'CONVERTED'
+        WHERE cart_id = #{cartId}
+          AND status = 'ACTIVE'
+    </update>
+
+    <update id="completeSession">
+        UPDATE tb_session
+        SET status = 'COMPLETED'
+        WHERE session_id = #{sessionId}
+          AND status = 'ACTIVE'
+    </update>
+
+    <select id="findConfirmedBookingForUpdate" resultType="map">
+        SELECT booking_id     AS bookingId,
+               booking_no     AS bookingNo,
+               member_id      AS memberId,
+               cart_id        AS cartId,
+               goods_id       AS goodsId,
+               sales_id       AS salesId,
+               ticket_cnt     AS ticketCnt,
+               total_amt      AS totalAmt,
+               pay_amt        AS payAmt,
+               pay_status     AS payStatus,
+               booking_status AS bookingStatus
+        FROM tb_booking_master
+        WHERE booking_id = #{bookingId}
+        FOR UPDATE
+    </select>
+
+    <select id="findConfirmedBookingIds" resultType="long">
+        SELECT booking_id
+        FROM tb_booking_master
+        WHERE booking_status = 'CONFIRMED'
+          AND pay_status = 'PAID'
+        ORDER BY booking_id
+    </select>
+
+    <select id="findValidTickets" resultType="com.kmc.ticketreserve.booking.BookingMapper$BookingTicketSeatRow">
+        SELECT booking_ticket_id AS bookingTicketId,
+               seat_id           AS seatId
+        FROM tb_booking_ticket
+        WHERE booking_id = #{bookingId}
+          AND ticket_status = 'VALID'
+        ORDER BY booking_ticket_id
+    </select>
+
+    <update id="updateSeatToAvailable">
+        UPDATE tb_goods_seatassign_details
+        SET seat_status = 'AVAILABLE',
+            version = version + 1
+        WHERE seat_id = #{seatId}
+          AND seat_status = 'SOLD'
+    </update>
+
+    <update id="restoreSoldToRemain">
+        UPDATE tb_goods_seatassign
+        SET sold_cnt = sold_cnt - 1,
+            remain_cnt = remain_cnt + 1
+        WHERE seatassign_id = #{seatassignId}
+          AND sold_cnt &gt; 0
+    </update>
+
+    <update id="cancelAllTickets">
+        UPDATE tb_booking_ticket
+        SET ticket_status = 'CANCELLED'
+        WHERE booking_id = #{bookingId}
+          AND ticket_status = 'VALID'
+    </update>
+
+    <update id="cancelBooking">
+        UPDATE tb_booking_master
+        SET booking_status = 'CANCELLED',
+            pay_status = 'REFUNDED'
+        WHERE booking_id = #{bookingId}
+          AND booking_status = 'CONFIRMED'
+          AND pay_status = 'PAID'
+    </update>
+
+</mapper>

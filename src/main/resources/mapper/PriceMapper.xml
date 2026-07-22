@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kmc.ticketreserve.price.PriceMapper">
+
+    <select id="findSales" resultType="map">
+        SELECT sales_id AS salesId,
+               goods_id AS goodsId,
+               status
+        FROM tb_goods_sales
+        WHERE sales_id = #{salesId}
+    </select>
+
+    <select id="findPricesByGrade" resultType="com.kmc.ticketreserve.price.dto.PriceItemResponse">
+        SELECT p.price_id      AS priceId,
+               p.seat_grade    AS seatGrade,
+               p.seat_grade_nm AS seatGradeNm,
+               p.price         AS price,
+               COALESCE(a.remain_cnt, 0) AS remainCnt
+        FROM tb_goods_salesprice p
+        LEFT JOIN tb_goods_seatassign a
+            ON a.sales_id = p.sales_id
+           AND a.seat_grade = p.seat_grade
+        WHERE p.sales_id = #{salesId}
+          AND p.seat_grade = #{seatGrade}
+        ORDER BY p.price DESC
+    </select>
+
+</mapper>
