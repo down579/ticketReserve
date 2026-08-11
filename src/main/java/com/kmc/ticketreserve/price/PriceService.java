@@ -4,6 +4,8 @@ import com.kmc.ticketreserve.common.ApiException;
 import com.kmc.ticketreserve.price.dto.PriceItemResponse;
 import com.kmc.ticketreserve.price.dto.PriceListResponse;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -17,6 +19,7 @@ public class PriceService {
         this.priceMapper = priceMapper;
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     public PriceListResponse getPrices(Long salesId, String seatGrade) {
         if (seatGrade == null || seatGrade.isBlank()) {
             throw ApiException.badRequest("seatGrade는 필수입니다.");

@@ -10,11 +10,15 @@ const VUS = Number(__ENV.VUS || 100);
 const DURATION = __ENV.DURATION || '1m';
 const SEATS_PER_USER = 1;
 const EXP = __ENV.EXP || 'default';
+// 예매 성공 후 즉시 취소해 좌석을 재활용 (pool 실험용)
+const CANCEL_AFTER_BOOK = String(__ENV.CANCEL_AFTER_BOOK || 'false').toLowerCase() === 'true';
 
 const bookingSuccess = new Counter('booking_success');
 const bookingFailed = new Counter('booking_failed');
 const holdConflict = new Counter('hold_conflict');
 const holdSuccess = new Counter('hold_success');
+const cancelSuccess = new Counter('cancel_success');
+const cancelFailed = new Counter('cancel_failed');
 const bookingSuccessRate = new Rate('booking_success_rate');
 
 export const options = {
@@ -181,17 +185,99 @@ export default function bookingFlow() {
     },
   });
 
-  if (bookingOk) {
-    bookingSuccess.add(1);
-    bookingSuccessRate.add(true);
-  } else {
+  if (!bookingOk) {
     bookingFailed.add(1);
     bookingSuccessRate.add(false);
+    return;
+  }
+
+  bookingSuccess.add(1);
+  bookingSuccessRate.add(true);
+
+  // 6) (옵션) 예매 즉시 취소 → 좌석 복구 후 다음 루프에서 재사용
+  if (!CANCEL_AFTER_BOOK) {
+    return;
+  }
+
+  const booking = parseJson(bookingRes);
+  const bookingId = booking?.bookingId;
+  if (!bookingId) {
+    cancelFailed.add(1);
+    return;
+  }
+
+  const cancelRes = http.post(
+    `${BASE_URL}/api/bookings/${bookingId}/cancel`,
+    null,
+    { tags: { step: 'cancel_booking' } },
+  );
+
+  const cancelOk = check(cancelRes, {
+    '예매 취소 200': (r) => r.status === 200,
+    '예매 상태 CANCELLED': (r) => {
+      const body = parseJson(r);
+      return body && body.bookingStatus === 'CANCELLED';
+    },
+  });
+
+  if (cancelOk) {
+    cancelSuccess.add(1);
+  } else {
+    cancelFailed.add(1);
   }
 }
 
 function metricValues(metric) {
   return metric?.values ?? metric ?? {};
+}
+
+function collectChecks(rootGroup) {
+  const result = {};
+  if (!rootGroup) {
+    return result;
+  }
+
+  const checks = rootGroup.checks;
+  if (Array.isArray(checks)) {
+    for (const check of checks) {
+      if (check?.name) {
+        result[check.name] = check.passes ?? 0;
+      }
+    }
+  } else if (checks && typeof checks === 'object') {
+    for (const [name, check] of Object.entries(checks)) {
+      result[name] = check.passes ?? 0;
+    }
+  }
+
+  const groups = rootGroup.groups;
+  if (Array.isArray(groups)) {
+    for (const group of groups) {
+      Object.assign(result, collectChecks(group));
+    }
+  } else if (groups && typeof groups === 'object') {
+    for (const group of Object.values(groups)) {
+      Object.assign(result, collectChecks(group));
+    }
+  }
+
+  return result;
+}
+
+function stepDuration(data, step) {
+  const metric = data.metrics[`http_req_duration{step:${step}}`];
+  if (!metric) {
+    return null;
+  }
+
+  const values = metricValues(metric);
+  return {
+    avg: values.avg ?? null,
+    med: values.med ?? null,
+    p90: values['p(90)'] ?? null,
+    p95: values['p(95)'] ?? null,
+    max: values.max ?? null,
+  };
 }
 
 function buildComparableSummary(data) {
@@ -206,9 +292,11 @@ function buildComparableSummary(data) {
   const failed = metricValues(data.metrics.booking_failed).count ?? 0;
   const holds = metricValues(data.metrics.hold_success).count ?? 0;
   const conflicts = metricValues(data.metrics.hold_conflict).count ?? 0;
+  const cancels = metricValues(data.metrics.cancel_success).count ?? 0;
+  const cancelFails = metricValues(data.metrics.cancel_failed).count ?? 0;
 
-  const checks = data.root_group?.checks ?? {};
-  const checkCount = (name) => checks[name]?.passes ?? 0;
+  const checks = collectChecks(data.root_group);
+  const checkCount = (name) => checks[name] ?? 0;
 
   return {
     experiment: {
@@ -220,6 +308,9 @@ function buildComparableSummary(data) {
       salesId: SALES_ID,
       seatGrade: SEAT_GRADE,
       baseUrl: BASE_URL,
+      cancelAfterBook: CANCEL_AFTER_BOOK,
+      readIsolation: 'READ_COMMITTED',
+      writeIsolation: 'REPEATABLE_READ',
       savedAt: new Date().toISOString(),
     },
     booking: {
@@ -227,6 +318,8 @@ function buildComparableSummary(data) {
       failed,
       holdSuccess: holds,
       holdConflict: conflicts,
+      cancelSuccess: cancels,
+      cancelFailed: cancelFails,
       successRate: bookingSuccessRate.value ?? (success + failed > 0 ? success / (success + failed) : 0),
     },
     checks: {
@@ -235,6 +328,15 @@ function buildComparableSummary(data) {
       holdSeats: checkCount('좌석 선점 200'),
       createCart: checkCount('장바구니 생성 200'),
       confirmBooking: checkCount('예매 확정 200'),
+      cancelBooking: checkCount('예매 취소 200'),
+    },
+    steps: {
+      getSeats: stepDuration(data, 'get_seats'),
+      createSession: stepDuration(data, 'create_session'),
+      holdSeats: stepDuration(data, 'hold_seats'),
+      createCart: stepDuration(data, 'create_cart'),
+      confirmBooking: stepDuration(data, 'confirm_booking'),
+      cancelBooking: stepDuration(data, 'cancel_booking'),
     },
     http: {
       requests: httpReqs.count ?? 0,
@@ -283,13 +385,24 @@ export function handleSummary(data) {
 
   console.log('\n========== 예매 부하 테스트 결과 ==========');
   console.log(`실험명: ${summary.experiment.name}`);
+  console.log(`모드: ${CANCEL_AFTER_BOOK ? '예매→즉시취소 (좌석 재활용)' : '예매만 (좌석 고갈형)'}`);
   console.log(`동시 유저: ${summary.experiment.vus}명 / 기간: ${summary.experiment.duration}`);
-  console.log(`좌석 수: ${summary.experiment.seatsPerUser}개 (선점 → 즉시 예매)`);
+  console.log(`좌석 수: ${summary.experiment.seatsPerUser}개`);
   console.log(`예매 성공: ${summary.booking.success}건`);
   console.log(`예매 실패: ${summary.booking.failed}건`);
   console.log(`선점 성공: ${summary.booking.holdSuccess}건`);
   console.log(`선점 충돌(409): ${summary.booking.holdConflict}건`);
-  console.log(`p95 응답시간: ${summary.http.durationMs.p95?.toFixed?.(2) ?? summary.http.durationMs.p95 ?? '-'}ms`);
+  if (CANCEL_AFTER_BOOK) {
+    console.log(`취소 성공: ${summary.booking.cancelSuccess}건`);
+    console.log(`취소 실패: ${summary.booking.cancelFailed}건`);
+  }
+  console.log(`전체 p95: ${summary.http.durationMs.p95?.toFixed?.(2) ?? summary.http.durationMs.p95 ?? '-'}ms`);
+  console.log(`좌석조회 p95: ${summary.steps.getSeats?.p95?.toFixed?.(2) ?? '-'}ms`);
+  console.log(`선점 p95: ${summary.steps.holdSeats?.p95?.toFixed?.(2) ?? '-'}ms`);
+  console.log(`예매 p95: ${summary.steps.confirmBooking?.p95?.toFixed?.(2) ?? '-'}ms`);
+  if (CANCEL_AFTER_BOOK) {
+    console.log(`취소 p95: ${summary.steps.cancelBooking?.p95?.toFixed?.(2) ?? '-'}ms`);
+  }
   console.log(`결과 저장: ${summaryPath}`);
   console.log('==========================================\n');
 

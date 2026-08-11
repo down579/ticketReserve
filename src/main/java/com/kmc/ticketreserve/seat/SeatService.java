@@ -5,6 +5,8 @@ import com.kmc.ticketreserve.seat.dto.SeatBlockResponse;
 import com.kmc.ticketreserve.seat.dto.SeatItemResponse;
 import com.kmc.ticketreserve.seat.dto.SeatMapResponse;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -20,6 +22,7 @@ public class SeatService {
         this.seatMapper = seatMapper;
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     public SeatMapResponse getSeatMap(Long salesId, String seatGrade, String blockCd) {
         Map<String, Object> sales = seatMapper.findSales(salesId);
         if (sales == null) {

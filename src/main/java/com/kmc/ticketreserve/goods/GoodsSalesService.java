@@ -4,6 +4,8 @@ import com.kmc.ticketreserve.common.ApiException;
 import com.kmc.ticketreserve.goods.dto.GoodsSalesListResponse;
 import com.kmc.ticketreserve.goods.dto.SalesItemResponse;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -17,6 +19,7 @@ public class GoodsSalesService {
         this.goodsSalesMapper = goodsSalesMapper;
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     public GoodsSalesListResponse getSales(Long goodsId, String status) {
         Map<String, Object> goods = goodsSalesMapper.findGoods(goodsId);
         if (goods == null) {
