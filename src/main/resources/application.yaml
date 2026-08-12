@@ -20,3 +20,10 @@ ticket:
     ttl-minutes: 10
   seat-hold:
     ttl-minutes: 7
+
+server:
+  tomcat:
+    max-connections: 20000
+    accept-count: 2000
+
+spring.threads.virtual.enabled: true

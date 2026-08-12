@@ -4,11 +4,7 @@ import com.kmc.ticketreserve.booking.dto.BookingResponse;
 import com.kmc.ticketreserve.booking.dto.CancelAllBookingsResponse;
 import com.kmc.ticketreserve.booking.dto.CancelBookingResponse;
 import com.kmc.ticketreserve.booking.dto.CreateBookingRequest;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -34,4 +30,11 @@ public class BookingController {
     public CancelBookingResponse cancel(@PathVariable Long bookingId) {
         return bookingService.cancel(bookingId);
     }
+
+    @GetMapping("/threads")
+    public String threadsTest() throws InterruptedException {
+        Thread.sleep(10);
+        return "";
+    }
+
 }

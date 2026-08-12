@@ -1,0 +1,46 @@
+{
+  "experiment": {
+    "name": "threads-vu1000",
+    "vus": 2000,
+    "duration": "30s",
+    "baseUrl": "http://localhost:8080",
+    "endpoint": "/api/bookings/threads",
+    "savedAt": "2026-08-12T12:49:23.015Z"
+  },
+  "threads": {
+    "success": 372579,
+    "failed": 2117,
+    "successRate": 0.9943500864700984
+  },
+  "checks": {
+    "getThreads": 372579
+  },
+  "steps": {
+    "getThreads": null
+  },
+  "http": {
+    "requests": 374696,
+    "rps": 12423.034632892555,
+    "failedRate": 0,
+    "durationMs": {
+      "avg": 153.31019204822053,
+      "med": 154.7909,
+      "p90": 181.7982,
+      "p95": 196.3679,
+      "max": 478.1683
+    },
+    "waitingMs": {
+      "avg": 152.6187695299661,
+      "p95": 194.4377,
+      "max": 446.6129
+    }
+  },
+  "iteration": {
+    "count": 374696,
+    "durationMs": {
+      "avg": 159.59636191606575,
+      "p95": 201.5495,
+      "max": 1739.8354
+    }
+  }
+}
