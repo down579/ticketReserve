@@ -4,6 +4,7 @@ import com.kmc.ticketreserve.common.ApiException;
 import com.kmc.ticketreserve.hold.dto.HoldItemResponse;
 import com.kmc.ticketreserve.hold.dto.HoldSeatsRequest;
 import com.kmc.ticketreserve.hold.dto.HoldSeatsResponse;
+import com.kmc.ticketreserve.seat.SeatMapCacheEvictor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -21,13 +22,16 @@ import java.util.Set;
 public class HoldService {
 
     private final HoldMapper holdMapper;
+    private final SeatMapCacheEvictor seatMapCacheEvictor;
     private final int ttlMinutes;
 
     public HoldService(
             HoldMapper holdMapper,
+            SeatMapCacheEvictor seatMapCacheEvictor,
             @Value("${ticket.seat-hold.ttl-minutes:7}") int ttlMinutes
     ) {
         this.holdMapper = holdMapper;
+        this.seatMapCacheEvictor = seatMapCacheEvictor;
         this.ttlMinutes = ttlMinutes;
     }
 
@@ -108,6 +112,8 @@ public class HoldService {
                     "HOLD"
             ));
         }
+
+        seatMapCacheEvictor.evictBySalesId(request.salesId());
 
         return new HoldSeatsResponse(
                 request.sessionId(),

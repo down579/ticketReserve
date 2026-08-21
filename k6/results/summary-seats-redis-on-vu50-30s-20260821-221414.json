@@ -1,0 +1,48 @@
+{
+  "experiment": {
+    "name": "seats-redis-on",
+    "vus": 50,
+    "duration": "30s",
+    "baseUrl": "http://localhost:8080",
+    "endpoint": "/api/sales/1/seats?seatGrade=R",
+    "salesId": 1,
+    "seatGrade": "R",
+    "savedAt": "2026-08-21T13:14:14.714Z"
+  },
+  "seats": {
+    "success": 92499,
+    "failed": 0,
+    "successRate": 1
+  },
+  "checks": {
+    "getSeats": 92499
+  },
+  "steps": {
+    "getSeats": null
+  },
+  "http": {
+    "requests": 92499,
+    "rps": 3082.45373287733,
+    "failedRate": 0,
+    "durationMs": {
+      "avg": 16.083786410663862,
+      "med": 15.0751,
+      "p90": 21.387939999999997,
+      "p95": 24.48331,
+      "max": 202.0839
+    },
+    "waitingMs": {
+      "avg": 15.99686243310729,
+      "p95": 24.409789999999983,
+      "max": 202.0839
+    }
+  },
+  "iteration": {
+    "count": 92499,
+    "durationMs": {
+      "avg": 16.2053924528913,
+      "p95": 24.67343,
+      "max": 202.0839
+    }
+  }
+}

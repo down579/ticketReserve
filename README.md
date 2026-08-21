@@ -9,6 +9,7 @@
 |------|------|
 | Backend | Java 21, Spring Boot 4, MyBatis |
 | DB | MySQL 8 (InnoDB), HikariCP |
+| Cache | Redis 7 (좌석맵) |
 | Load test | Grafana k6 |
 | Reports | `docs/reports/*.canvas.tsx` |
 
@@ -54,7 +55,7 @@ ticketReserve/
 
 ## 사전 준비
 
-1. **JDK 21**, **MySQL**, **[k6](https://grafana.com/docs/k6/latest/set-up/install-k6/)**
+1. **JDK 21**, **MySQL**, **Redis**, **[k6](https://grafana.com/docs/k6/latest/set-up/install-k6/)**
 2. DB 생성 및 시드
 
 ```bash
@@ -62,6 +63,14 @@ mysql -u root -p < src/main/resources/db/schema.sql
 mysql -u root -p < src/main/resources/db/seed.sql
 # 필요 시 alter_*.sql 적용
 ```
+
+Redis (좌석맵 캐시, 기본 TTL 3초):
+
+```bash
+docker compose up -d redis
+```
+
+캐시를 끄려면 `ticket.seat-map.cache-enabled: false`.
 
 3. `src/main/resources/application.yaml`의 datasource URL / username / password를 환경에 맞게 수정
 
@@ -82,6 +91,7 @@ mysql -u root -p < src/main/resources/db/seed.sql
 - Hikari `maximum-pool-size` / `minimum-idle` — 풀 크기 실험용
 - `ticket.session.ttl-minutes` — 세션 TTL (기본 10분)
 - `ticket.seat-hold.ttl-minutes` — 선점 TTL (기본 7분)
+- `ticket.seat-map.cache-enabled` / `ttl-seconds` — 좌석맵 Redis 캐시
 
 ## k6 부하 테스트
 

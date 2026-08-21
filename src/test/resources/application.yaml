@@ -1,0 +1,3 @@
+ticket:
+  seat-map:
+    cache-enabled: false

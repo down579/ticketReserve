@@ -7,8 +7,12 @@ spring:
     password: "!@tngkr304"
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      maximum-pool-size: 5
-      minimum-idle: 5
+      maximum-pool-size: 50
+      minimum-idle: 10
+  data:
+    redis:
+      host: localhost
+      port: 6379
 
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
@@ -20,6 +24,9 @@ ticket:
     ttl-minutes: 10
   seat-hold:
     ttl-minutes: 7
+  seat-map:
+    cache-enabled: "false"
+    ttl-seconds: 3
 
 server:
   tomcat:

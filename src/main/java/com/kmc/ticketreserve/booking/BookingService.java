@@ -6,6 +6,7 @@ import com.kmc.ticketreserve.booking.dto.CancelAllBookingsResponse;
 import com.kmc.ticketreserve.booking.dto.CancelBookingResponse;
 import com.kmc.ticketreserve.booking.dto.CreateBookingRequest;
 import com.kmc.ticketreserve.common.ApiException;
+import com.kmc.ticketreserve.seat.SeatMapCacheEvictor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,9 +19,11 @@ import java.util.Map;
 public class BookingService {
 
     private final BookingMapper bookingMapper;
+    private final SeatMapCacheEvictor seatMapCacheEvictor;
 
-    public BookingService(BookingMapper bookingMapper) {
+    public BookingService(BookingMapper bookingMapper, SeatMapCacheEvictor seatMapCacheEvictor) {
         this.bookingMapper = bookingMapper;
+        this.seatMapCacheEvictor = seatMapCacheEvictor;
     }
 
     @Transactional
@@ -125,6 +128,7 @@ public class BookingService {
             throw ApiException.conflict("장바구니 상태 변경에 실패했습니다. cartId=" + request.cartId());
         }
         bookingMapper.completeSession(sessionId);
+        seatMapCacheEvictor.evictBySalesId(salesId);
 
         return new BookingResponse(
                 master.getBookingId(),
@@ -197,6 +201,8 @@ public class BookingService {
         if (bookingUpdated != 1) {
             throw ApiException.conflict("예매 취소 처리에 실패했습니다. bookingId=" + bookingId);
         }
+
+        seatMapCacheEvictor.evictBySalesId(toLong(booking.get("salesId")));
 
         return new CancelBookingResponse(
                 bookingId,

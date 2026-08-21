@@ -1,0 +1,48 @@
+{
+  "experiment": {
+    "name": "booking-redis-warmup",
+    "vus": 50,
+    "duration": "10s",
+    "baseUrl": "http://localhost:8080",
+    "endpoint": "/api/sales/1/seats?seatGrade=R",
+    "salesId": 1,
+    "seatGrade": "R",
+    "savedAt": "2026-08-21T13:17:36.730Z"
+  },
+  "seats": {
+    "success": 44273,
+    "failed": 0,
+    "successRate": 1
+  },
+  "checks": {
+    "getSeats": 44273
+  },
+  "steps": {
+    "getSeats": null
+  },
+  "http": {
+    "requests": 44273,
+    "rps": 4424.586799128906,
+    "failedRate": 0,
+    "durationMs": {
+      "avg": 11.193513407720245,
+      "med": 10.9011,
+      "p90": 14.108740000000004,
+      "p95": 15.303280000000008,
+      "max": 37.7995
+    },
+    "waitingMs": {
+      "avg": 11.138994789149082,
+      "p95": 15.22558,
+      "max": 37.2758
+    }
+  },
+  "iteration": {
+    "count": 44273,
+    "durationMs": {
+      "avg": 11.289371377588987,
+      "p95": 15.396460000000001,
+      "max": 53.9951
+    }
+  }
+}

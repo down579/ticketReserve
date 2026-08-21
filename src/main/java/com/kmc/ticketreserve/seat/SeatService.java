@@ -17,13 +17,20 @@ import java.util.Map;
 public class SeatService {
 
     private final SeatMapper seatMapper;
+    private final SeatMapCache seatMapCache;
 
-    public SeatService(SeatMapper seatMapper) {
+    public SeatService(SeatMapper seatMapper, SeatMapCache seatMapCache) {
         this.seatMapper = seatMapper;
+        this.seatMapCache = seatMapCache;
     }
 
     @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     public SeatMapResponse getSeatMap(Long salesId, String seatGrade, String blockCd) {
+        SeatMapResponse cached = seatMapCache.get(salesId, seatGrade, blockCd);
+        if (cached != null) {
+            return cached;
+        }
+
         Map<String, Object> sales = seatMapper.findSales(salesId);
         if (sales == null) {
             throw ApiException.notFound("회차를 찾을 수 없습니다. salesId=" + salesId);
@@ -54,7 +61,9 @@ public class SeatService {
                 .map(e -> new SeatBlockResponse(e.getKey(), e.getValue()))
                 .toList();
 
-        return new SeatMapResponse(salesId, hasBlock, blocks);
+        SeatMapResponse seatMap = new SeatMapResponse(salesId, hasBlock, blocks);
+        seatMapCache.put(salesId, seatGrade, blockCd, seatMap);
+        return seatMap;
     }
 
     private static String blankToNull(String value) {
