@@ -5,6 +5,8 @@ import com.kmc.ticketreserve.hold.dto.HoldItemResponse;
 import com.kmc.ticketreserve.hold.dto.HoldSeatsRequest;
 import com.kmc.ticketreserve.hold.dto.HoldSeatsResponse;
 import com.kmc.ticketreserve.seat.SeatMapCacheEvictor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -21,18 +23,24 @@ import java.util.Set;
 @Service
 public class HoldService {
 
+    private static final Logger log = LoggerFactory.getLogger(HoldService.class);
+
     private final HoldMapper holdMapper;
     private final SeatMapCacheEvictor seatMapCacheEvictor;
     private final int ttlMinutes;
+    private final SeatHoldLockMode lockMode;
 
     public HoldService(
             HoldMapper holdMapper,
             SeatMapCacheEvictor seatMapCacheEvictor,
-            @Value("${ticket.seat-hold.ttl-minutes:7}") int ttlMinutes
+            @Value("${ticket.seat-hold.ttl-minutes:7}") int ttlMinutes,
+            @Value("${ticket.seat-hold.lock-mode:pessimistic}") String lockMode
     ) {
         this.holdMapper = holdMapper;
         this.seatMapCacheEvictor = seatMapCacheEvictor;
         this.ttlMinutes = ttlMinutes;
+        this.lockMode = SeatHoldLockMode.from(lockMode);
+        log.info("seat-hold lock-mode={}", this.lockMode);
     }
 
     @Transactional
@@ -68,9 +76,10 @@ public class HoldService {
         Long memberId = toLong(session.get("memberId"));
         LocalDateTime holdExpireAt = LocalDateTime.now().plusMinutes(ttlMinutes);
         List<HoldItemResponse> holds = new ArrayList<>();
+        boolean forUpdate = lockMode.useForUpdate();
 
         for (Long seatId : seatIds) {
-            HoldMapper.SeatLockRow seat = holdMapper.findSeatForUpdate(seatId, request.salesId());
+            HoldMapper.SeatLockRow seat = holdMapper.findSeatForLock(seatId, request.salesId(), forUpdate);
             if (seat == null) {
                 throw ApiException.notFound("좌석을 찾을 수 없습니다. seatId=" + seatId);
             }

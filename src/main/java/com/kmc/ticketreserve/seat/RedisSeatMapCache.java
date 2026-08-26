@@ -14,7 +14,7 @@ import java.util.Set;
 @ConditionalOnProperty(prefix = "ticket.seat-map", name = "cache-enabled", havingValue = "true", matchIfMissing = true)
 public class RedisSeatMapCache implements SeatMapCache {
 
-    private static final String KEY_PREFIX = "ticketReserve:seatmap:";
+    private static final String KEY_PREFIX = SeatMapCache.KEY_PREFIX;
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -32,7 +32,7 @@ public class RedisSeatMapCache implements SeatMapCache {
 
     @Override
     public SeatMapResponse get(Long salesId, String seatGrade, String blockCd) {
-        String json = redisTemplate.opsForValue().get(key(salesId, seatGrade, blockCd));
+        String json = redisTemplate.opsForValue().get(SeatMapCache.key(salesId, seatGrade, blockCd));
         if (json == null || json.isBlank()) {
             return null;
         }
@@ -42,7 +42,7 @@ public class RedisSeatMapCache implements SeatMapCache {
     @Override
     public void put(Long salesId, String seatGrade, String blockCd, SeatMapResponse seatMap) {
         redisTemplate.opsForValue().set(
-                key(salesId, seatGrade, blockCd),
+                SeatMapCache.key(salesId, seatGrade, blockCd),
                 objectMapper.writeValueAsString(seatMap),
                 ttl
         );
@@ -57,16 +57,5 @@ public class RedisSeatMapCache implements SeatMapCache {
         if (keys != null && !keys.isEmpty()) {
             redisTemplate.delete(keys);
         }
-    }
-
-    static String key(Long salesId, String seatGrade, String blockCd) {
-        return KEY_PREFIX + salesId + ":" + token(seatGrade) + ":" + token(blockCd);
-    }
-
-    private static String token(String value) {
-        if (value == null || value.isBlank()) {
-            return "_";
-        }
-        return value;
     }
 }

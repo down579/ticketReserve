@@ -10,6 +10,7 @@
 | Backend | Java 21, Spring Boot 4, MyBatis |
 | DB | MySQL 8 (InnoDB), HikariCP |
 | Cache | Redis 7 (좌석맵) |
+| Metrics | Spring Actuator, Prometheus, Grafana |
 | Load test | Grafana k6 |
 | Reports | `docs/reports/*.canvas.tsx` |
 
@@ -20,8 +21,9 @@
                                          └─ (옵션) 즉시 취소로 좌석 재활용
 ```
 
-선점 시 좌석에 `SELECT … FOR UPDATE` + version 기반 갱신을 사용해 동시 예매 충돌(409)을 처리합니다.  
-조회 트랜잭션은 `READ_COMMITTED`, 쓰기 트랜잭션은 기본 isolation을 사용합니다.
+선점 시 `ticket.seat-hold.lock-mode`로 락 전략을 고릅니다.  
+`pessimistic`(기본): `SELECT … FOR UPDATE` + version CAS · `optimistic`: 일반 SELECT + version CAS.
+
 
 ## 주요 API
 
@@ -50,6 +52,9 @@ ticketReserve/
 ├── k6/
 │   ├── booking-load-test.js           # 부하 테스트 스크립트
 │   └── results/                       # 실험 결과 JSON
+├── monitoring/
+│   ├── prometheus.yml                 # Prometheus scrape (host:8080)
+│   └── grafana/                       # 데이터소스·대시보드 프로비저닝
 └── docs/reports/                      # 실험 보고서(canvas)
 ```
 
@@ -64,10 +69,10 @@ mysql -u root -p < src/main/resources/db/seed.sql
 # 필요 시 alter_*.sql 적용
 ```
 
-Redis (좌석맵 캐시, 기본 TTL 3초):
+Redis (좌석맵 캐시, 기본 TTL 3초)와 모니터링:
 
 ```bash
-docker compose up -d redis
+docker compose up -d redis prometheus grafana
 ```
 
 캐시를 끄려면 `ticket.seat-map.cache-enabled: false`.
@@ -91,7 +96,57 @@ docker compose up -d redis
 - Hikari `maximum-pool-size` / `minimum-idle` — 풀 크기 실험용
 - `ticket.session.ttl-minutes` — 세션 TTL (기본 10분)
 - `ticket.seat-hold.ttl-minutes` — 선점 TTL (기본 7분)
+- `ticket.seat-hold.lock-mode` — `pessimistic` | `optimistic` (선점 락 전략)
 - `ticket.seat-map.cache-enabled` / `ttl-seconds` — 좌석맵 Redis 캐시
+
+### 낙관적 vs 비관적 락 실험
+
+가설: **성공 건수는 비슷**하고, 낙관적은 **p95·waiting이 낮으며**, 비관적은 lock wait로 꼬리 지연이 길다.
+
+권장 통제: Hikari pool **20** (풀 5면 커넥션 대기가 락 대기를 가림), `CANCEL_AFTER_BOOK=true`, VU 50·200, 30s, 각 모드 2회.
+
+```yaml
+# application.yaml
+spring.datasource.hikari.maximum-pool-size: 20
+spring.datasource.hikari.minimum-idle: 20
+ticket.seat-hold.lock-mode: pessimistic   # 또는 optimistic
+```
+
+앱 재시작 후 로그에 `seat-hold lock-mode=PESSIMISTIC|OPTIMISTIC`이 보여야 합니다.
+
+```powershell
+# 비관적
+# (yaml에서 lock-mode: pessimistic 후 앱 재시작)
+$env:VUS="50"; $env:DURATION="30s"; $env:EXP="lock-pessimistic"; $env:CANCEL_AFTER_BOOK="true"
+k6 run k6/booking-load-test.js
+
+# 낙관적
+# (yaml에서 lock-mode: optimistic 후 앱 재시작)
+$env:VUS="50"; $env:DURATION="30s"; $env:EXP="lock-optimistic"; $env:CANCEL_AFTER_BOOK="true"
+k6 run k6/booking-load-test.js
+```
+
+비교 지표: `booking_success`, `hold_success`, `hold_conflict`, HTTP p95, waiting p95, RPS.  
+성공 건수가 거의 같고 p95만 갈리면 가설이 맞습니다.
+
+## 모니터링 (Prometheus / Grafana)
+
+앱이 `http://localhost:8080`에서 떠 있는 상태에서:
+
+```powershell
+docker compose up -d prometheus grafana
+```
+
+| 주소 | 설명 |
+|------|------|
+| http://localhost:8080/actuator/prometheus | 앱 메트릭 (scrape 대상) |
+| http://localhost:9090 | Prometheus |
+| http://localhost:3000 | Grafana (admin / admin) |
+
+Grafana 폴더 `ticketReserve` → 대시보드 **ticketReserve 실험 모니터**.  
+k6 돌리는 동안 HTTP RPS·p95, 409, Hikari 풀, 톰캣 스레드, 좌석맵 캐시 hit/miss를 같이 보면 됩니다.
+
+Prometheus는 Docker에서 호스트 앱을 `host.docker.internal:8080`으로 긁습니다. Status → Targets가 UP이어야 합니다.
 
 ## k6 부하 테스트
 
@@ -132,12 +187,20 @@ k6 run k6/booking-load-test.js
 
 ## 실험 테마 (기존 보고서)
 
+**입구:** [`docs/reports/experiment-summary.canvas.tsx`](docs/reports/experiment-summary.canvas.tsx) — 전체 기간 종합 정리
+
 | 보고서 | 초점 |
 |--------|------|
+| `docs/reports/experiment-summary.canvas.tsx` | **종합** · 병목 스토리라인 · 실무 시사점 |
 | `docs/reports/vu-scale-experiment-report.canvas.tsx` | VU 증가 vs 예매 성공·p95·holdConflict |
 | `docs/reports/recycle-pool-experiment-report.canvas.tsx` | 좌석 재활용 + Hikari pool 5 vs 20 |
 | `docs/reports/lock-scope-experiment-report.canvas.tsx` | 락 범위 축소 전후 지연·처리량 |
-| `docs/reports/daily-experiment-report.canvas.tsx` | 일별 실험 요약 |
+| `docs/reports/hold-lock-mode-experiment-report.canvas.tsx` | 선점 낙관적 vs 비관적 락 |
+| `docs/reports/virtual-threads-experiment-report.canvas.tsx` | sleep API · 가상 스레드 RPS |
+| `docs/reports/vt-db-api-experiment-report.canvas.tsx` | VT × 예매/좌석조회(DB) |
+| `docs/reports/redis-seatmap-experiment-report.canvas.tsx` | Redis 좌석맵 캐시 |
+| `docs/reports/cache-stampede-experiment-report.canvas.tsx` | 캐시 스탬피드 · single-flight |
+| `docs/reports/daily-experiment-report.canvas.tsx` | 7월 초반 일별 요약 |
 
 측정 시 권장: 워밍업 run → 본측정 2회 이상 → `k6/results` JSON 비교.
 

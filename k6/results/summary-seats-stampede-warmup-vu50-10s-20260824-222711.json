@@ -1,0 +1,48 @@
+{
+  "experiment": {
+    "name": "seats-stampede-warmup",
+    "vus": 50,
+    "duration": "10s",
+    "baseUrl": "http://localhost:8080",
+    "endpoint": "/api/sales/1/seats?seatGrade=R",
+    "salesId": 1,
+    "seatGrade": "R",
+    "savedAt": "2026-08-24T13:27:11.745Z"
+  },
+  "seats": {
+    "success": 11877,
+    "failed": 0,
+    "successRate": 1
+  },
+  "checks": {
+    "getSeats": 11877
+  },
+  "steps": {
+    "getSeats": null
+  },
+  "http": {
+    "requests": 11877,
+    "rps": 1182.9578885417814,
+    "failedRate": 0,
+    "durationMs": {
+      "avg": 41.85159410625532,
+      "med": 29.3512,
+      "p90": 45.5032,
+      "p95": 93.49397999999994,
+      "max": 830.7474
+    },
+    "waitingMs": {
+      "avg": 41.73400477393243,
+      "p95": 93.29999999999974,
+      "max": 830.2421
+    }
+  },
+  "iteration": {
+    "count": 11877,
+    "durationMs": {
+      "avg": 42.15332457691299,
+      "p95": 94.40186,
+      "max": 862.6258
+    }
+  }
+}

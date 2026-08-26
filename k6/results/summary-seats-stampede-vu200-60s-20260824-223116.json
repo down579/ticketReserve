@@ -1,0 +1,48 @@
+{
+  "experiment": {
+    "name": "seats-stampede",
+    "vus": 200,
+    "duration": "60s",
+    "baseUrl": "http://localhost:8080",
+    "endpoint": "/api/sales/1/seats?seatGrade=R",
+    "salesId": 1,
+    "seatGrade": "R",
+    "savedAt": "2026-08-24T13:31:16.225Z"
+  },
+  "seats": {
+    "success": 89073,
+    "failed": 0,
+    "successRate": 1
+  },
+  "checks": {
+    "getSeats": 89073
+  },
+  "steps": {
+    "getSeats": null
+  },
+  "http": {
+    "requests": 89073,
+    "rps": 1480.2426001177105,
+    "failedRate": 0,
+    "durationMs": {
+      "avg": 134.72426020342655,
+      "med": 114.8382,
+      "p90": 153.7665400000001,
+      "p95": 332.601,
+      "max": 843.5213
+    },
+    "waitingMs": {
+      "avg": 134.62350273371104,
+      "p95": 332.49338,
+      "max": 843.5213
+    }
+  },
+  "iteration": {
+    "count": 89073,
+    "durationMs": {
+      "avg": 134.95626059524105,
+      "p95": 333.15724,
+      "max": 843.5213
+    }
+  }
+}

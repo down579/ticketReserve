@@ -1,0 +1,66 @@
+{
+  "experiment": {
+    "name": "lock-pessimistic",
+    "vus": 50,
+    "duration": "30s",
+    "seatsPerUser": 1,
+    "goodsId": 1,
+    "salesId": 1,
+    "seatGrade": "R",
+    "baseUrl": "http://localhost:8080",
+    "cancelAfterBook": true,
+    "readIsolation": "READ_COMMITTED",
+    "writeIsolation": "REPEATABLE_READ",
+    "savedAt": "2026-08-26T12:49:27.554Z"
+  },
+  "booking": {
+    "success": 733,
+    "failed": 6960,
+    "holdSuccess": 733,
+    "holdConflict": 6960,
+    "cancelSuccess": 733,
+    "cancelFailed": 0,
+    "successRate": 0.09528142467177954
+  },
+  "checks": {
+    "getSeats": 7693,
+    "createSession": 7693,
+    "holdSeats": 733,
+    "createCart": 733,
+    "confirmBooking": 733,
+    "cancelBooking": 733
+  },
+  "steps": {
+    "getSeats": null,
+    "createSession": null,
+    "holdSeats": null,
+    "createCart": null,
+    "confirmBooking": null,
+    "cancelBooking": null
+  },
+  "http": {
+    "requests": 25278,
+    "rps": 836.1614924027841,
+    "failedRate": 0,
+    "durationMs": {
+      "avg": 59.22370525358019,
+      "med": 13.876850000000001,
+      "p90": 220.85985,
+      "p95": 232.368605,
+      "max": 725.196
+    },
+    "waitingMs": {
+      "avg": 59.02362108552883,
+      "p95": 232.25058499999994,
+      "max": 723.8696
+    }
+  },
+  "iteration": {
+    "count": 7693,
+    "durationMs": {
+      "avg": 195.2803781749639,
+      "p95": 342.96837999999997,
+      "max": 1028.7202
+    }
+  }
+}

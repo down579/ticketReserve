@@ -1,3 +1,7 @@
 ticket:
+  seat-hold:
+    lock-mode: pessimistic
   seat-map:
     cache-enabled: false
+    miss-delay-ms: 0
+    single-flight-enabled: false

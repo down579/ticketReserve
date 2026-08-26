@@ -10,9 +10,10 @@ public interface HoldMapper {
 
     Map<String, Object> findActiveSession(@Param("sessionId") String sessionId);
 
-    SeatLockRow findSeatForUpdate(
+    SeatLockRow findSeatForLock(
             @Param("seatId") Long seatId,
-            @Param("salesId") Long salesId
+            @Param("salesId") Long salesId,
+            @Param("forUpdate") boolean forUpdate
     );
 
     int updateSeatToHold(

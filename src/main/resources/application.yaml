@@ -7,8 +7,9 @@ spring:
     password: "!@tngkr304"
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      maximum-pool-size: 50
-      minimum-idle: 10
+      pool-name: ticketReserve
+      maximum-pool-size: 20
+      minimum-idle: 5
   data:
     redis:
       host: localhost
@@ -24,9 +25,14 @@ ticket:
     ttl-minutes: 10
   seat-hold:
     ttl-minutes: 7
+    # pessimistic: SELECT … FOR UPDATE + version CAS
+    # optimistic: 일반 SELECT + version CAS (경합 시 즉시 409)
+    lock-mode: optimistic
   seat-map:
-    cache-enabled: "false"
-    ttl-seconds: 3
+    cache-enabled: true
+    ttl-seconds: 30
+    miss-delay-ms: 200
+    single-flight-enabled: false
 
 server:
   tomcat:
@@ -34,3 +40,27 @@ server:
     accept-count: 2000
 
 spring.threads.virtual.enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests:
+          - 0.5
+          - 0.95
+          - 0.99

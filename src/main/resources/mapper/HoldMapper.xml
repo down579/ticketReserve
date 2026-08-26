@@ -16,7 +16,8 @@
           AND expire_at &gt; NOW()
     </select>
 
-    <select id="findSeatForUpdate" resultType="com.kmc.ticketreserve.hold.HoldMapper$SeatLockRow">
+    <!-- forUpdate=true: 비관적 락 / false: 낙관적(일반 SELECT + version CAS) -->
+    <select id="findSeatForLock" resultType="com.kmc.ticketreserve.hold.HoldMapper$SeatLockRow">
         SELECT seat_id       AS seatId,
                seatassign_id AS seatassignId,
                sales_id      AS salesId,
@@ -29,7 +30,9 @@
         FROM tb_goods_seatassign_details
         WHERE seat_id = #{seatId}
           AND sales_id = #{salesId}
-        FOR UPDATE
+        <if test="forUpdate">
+            FOR UPDATE
+        </if>
     </select>
 
     <update id="updateSeatToHold">
