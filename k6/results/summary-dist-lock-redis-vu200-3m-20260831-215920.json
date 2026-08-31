@@ -1,0 +1,53 @@
+{
+  "experiment": {
+    "name": "dist-lock-redis",
+    "vus": 200,
+    "duration": "3m",
+    "baseUrl": "http://localhost:8080,http://localhost:8081,http://localhost:8082",
+    "baseUrls": [
+      "http://localhost:8080",
+      "http://localhost:8081",
+      "http://localhost:8082"
+    ],
+    "endpoint": "/api/sales/1/seats?seatGrade=R",
+    "salesId": 1,
+    "seatGrade": "R",
+    "savedAt": "2026-08-31T12:59:20.650Z"
+  },
+  "seats": {
+    "success": 1973356,
+    "failed": 0,
+    "successRate": 1
+  },
+  "checks": {
+    "getSeats": 1973356
+  },
+  "steps": {
+    "getSeats": null
+  },
+  "http": {
+    "requests": 1973356,
+    "rps": 10962.595048343283,
+    "failedRate": 0,
+    "durationMs": {
+      "avg": 17.3317890615309,
+      "med": 13.4718,
+      "p90": 22.193550000000002,
+      "p95": 28.172849999999997,
+      "max": 2902.689
+    },
+    "waitingMs": {
+      "avg": 16.56661876184849,
+      "p95": 25.9731,
+      "max": 2902.689
+    }
+  },
+  "iteration": {
+    "count": 1973356,
+    "durationMs": {
+      "avg": 18.178788278549977,
+      "p95": 30.92655,
+      "max": 2902.689
+    }
+  }
+}

@@ -2,7 +2,10 @@ import http from 'k6/http';
 import { check } from 'k6';
 import { Counter, Rate } from 'k6/metrics';
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const BASE_URLS = (__ENV.BASE_URLS || __ENV.BASE_URL || 'http://localhost:8080')
+  .split(',')
+  .map((url) => url.trim())
+  .filter((url) => url.length > 0);
 const SALES_ID = Number(__ENV.SALES_ID || 1);
 const SEAT_GRADE = __ENV.SEAT_GRADE || 'R';
 const VUS = Number(__ENV.VUS || 100);
@@ -31,7 +34,8 @@ export const options = {
 };
 
 export default function seatsFlow() {
-  const res = http.get(`${BASE_URL}${ENDPOINT}`, {
+  const baseUrl = BASE_URLS[__VU % BASE_URLS.length];
+  const res = http.get(`${baseUrl}${ENDPOINT}`, {
     tags: { step: 'get_seats' },
   });
 
@@ -119,7 +123,8 @@ function buildComparableSummary(data) {
       name: EXP,
       vus: VUS,
       duration: DURATION,
-      baseUrl: BASE_URL,
+      baseUrl: BASE_URLS.join(','),
+      baseUrls: BASE_URLS,
       endpoint: ENDPOINT,
       salesId: SALES_ID,
       seatGrade: SEAT_GRADE,

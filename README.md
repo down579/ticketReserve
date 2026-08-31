@@ -51,7 +51,11 @@ ticketReserve/
 │   └── mapper/                        # MyBatis XML
 ├── k6/
 │   ├── booking-load-test.js           # 부하 테스트 스크립트
+│   ├── seats-load-test.js             # 좌석맵 조회 전용
 │   └── results/                       # 실험 결과 JSON
+├── scripts/
+│   ├── run-cluster.ps1                # 3인스턴스 클러스터 기동
+│   └── run-single.ps1                 # 단일 인스턴스 + coordinator
 ├── monitoring/
 │   ├── prometheus.yml                 # Prometheus scrape (host:8080)
 │   └── grafana/                       # 데이터소스·대시보드 프로비저닝
@@ -98,6 +102,47 @@ docker compose up -d redis prometheus grafana
 - `ticket.seat-hold.ttl-minutes` — 선점 TTL (기본 7분)
 - `ticket.seat-hold.lock-mode` — `pessimistic` | `optimistic` (선점 락 전략)
 - `ticket.seat-map.cache-enabled` / `ttl-seconds` — 좌석맵 Redis 캐시
+- `ticket.seat-map.coordinator` — `none` | `local` | `redis` (캐시 miss DB 로드 조율)
+- `ticket.instance-id` — Prometheus/Grafana 인스턴스 구분 (기본: server.port)
+
+### Redis 분산 락 · 스탬피드 실험
+
+캐시 TTL 만료 시 miss 조율 방식을 바꿔 비교합니다.
+
+| coordinator | 의미 |
+|-------------|------|
+| `none` | 스탬피드 재현 (miss마다 DB) |
+| `local` | JVM 내 single-flight (인스턴스당 리더 1명) |
+| `redis` | Redis SET NX 분산 락 (클러스터 전체 리더 1명) |
+
+권장: Hikari pool **5**, TTL **30s**, `miss-delay-ms: 200`, VU **200**, 3m, Grafana scrape **1s**.
+
+**3인스턴스 클러스터** (분산 락 차이를 보려면 필수). `bootJar` 1회 후 `java -jar`로 3프로세스 기동 (Gradle 락 충돌 방지):
+
+```powershell
+.\scripts\run-cluster.ps1 -Coordinator none   # 또는 local / redis
+docker compose restart prometheus grafana
+```
+
+이미 빌드된 jar가 있으면 `-SkipBuild`로 건너뛸 수 있습니다.
+
+```powershell
+$env:BASE_URLS="http://localhost:8080,http://localhost:8081,http://localhost:8082"
+$env:VUS="200"; $env:DURATION="3m"; $env:EXP="dist-lock-local"
+k6 run k6/seats-load-test.js
+```
+
+기동 로그: `seat-map coordinator=LOCAL|REDIS|NONE`.  
+Grafana: 캐시 hit/miss/join, `ticket_seatmap_coordinator_total` (lock_acquired, lock_wait, lock_wait_hit), Hikari pending, p95.
+
+**A/B 순서:** `none` (3인스턴스) → `local` (3인스턴스) → `redis` (3인스턴스).  
+기대: local은 miss≈인스턴스 수, redis는 miss≈1, 만료 구간 p95·pending은 redis≈local(1대).
+
+단일 인스턴스만 쓸 때:
+
+```powershell
+.\scripts\run-single.ps1 -Coordinator redis -Port 8080
+```
 
 ### 낙관적 vs 비관적 락 실험
 
@@ -172,7 +217,8 @@ k6 run k6/booking-load-test.js
 
 | 변수 | 기본값 | 설명 |
 |------|--------|------|
-| `BASE_URL` | `http://localhost:8080` | API 주소 |
+| `BASE_URL` | `http://localhost:8080` | API 주소 (단일) |
+| `BASE_URLS` | `BASE_URL`과 동일 | 콤마 구분 다중 인스턴스 (VU 라운드로빈) |
 | `VUS` | `100` | 동시 Virtual User |
 | `DURATION` | `1m` | 테스트 시간 |
 | `GOODS_ID` / `SALES_ID` | `1` / `1` | 상품·회차 |
@@ -200,6 +246,7 @@ k6 run k6/booking-load-test.js
 | `docs/reports/vt-db-api-experiment-report.canvas.tsx` | VT × 예매/좌석조회(DB) |
 | `docs/reports/redis-seatmap-experiment-report.canvas.tsx` | Redis 좌석맵 캐시 |
 | `docs/reports/cache-stampede-experiment-report.canvas.tsx` | 캐시 스탬피드 · single-flight |
+| `docs/reports/redis-distributed-lock-experiment-report.canvas.tsx` | Redis 분산 락 · 3노드 PoC |
 | `docs/reports/daily-experiment-report.canvas.tsx` | 7월 초반 일별 요약 |
 
 측정 시 권장: 워밍업 run → 본측정 2회 이상 → `k6/results` JSON 비교.

@@ -8,7 +8,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       pool-name: ticketReserve
-      maximum-pool-size: 20
+      maximum-pool-size: 5
       minimum-idle: 5
   data:
     redis:
@@ -21,20 +21,24 @@ mybatis:
     map-underscore-to-camel-case: true
 
 ticket:
+  instance-id: ${INSTANCE_ID:${server.port}}
   session:
     ttl-minutes: 10
   seat-hold:
     ttl-minutes: 7
-    # pessimistic: SELECT … FOR UPDATE + version CAS
-    # optimistic: 일반 SELECT + version CAS (경합 시 즉시 409)
-    lock-mode: optimistic
+    lock-mode: pessimistic
   seat-map:
     cache-enabled: true
     ttl-seconds: 30
     miss-delay-ms: 200
-    single-flight-enabled: false
+    # none: 스탬피드 재현 | local: JVM single-flight | redis: Redis 분산 락
+    coordinator: none
+    redis-lock-ttl-seconds: 15
+    redis-lock-wait-ms: 10000
+    redis-lock-poll-ms: 50
 
 server:
+  port: 8080
   tomcat:
     max-connections: 20000
     accept-count: 2000
@@ -56,6 +60,7 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+      instance: ${ticket.instance-id}
     distribution:
       percentiles-histogram:
         http.server.requests: true
