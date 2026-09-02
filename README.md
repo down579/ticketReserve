@@ -144,6 +144,52 @@ Grafana: 캐시 hit/miss/join, `ticket_seatmap_coordinator_total` (lock_acquired
 .\scripts\run-single.ps1 -Coordinator redis -Port 8080
 ```
 
+### JVM · GC 실험
+
+힙·GC pause·할당량을 Grafana와 gc.log로 관찰합니다. **인스턴스 1대** 권장.
+
+| 옵션 | 기본 | 설명 |
+|------|------|------|
+| `-Heap` | `256m` | `-Xms` / `-Xmx` (작을수록 GC가 자주 보임) |
+| `-GcLog` | off | `logs/gc-{port}.log`에 G1 GC 로그 |
+| `-PlatformThreads` | off | 가상 스레드 끄기 (VT ON/OFF A/B) |
+
+```powershell
+# GC 로그 + 작은 힙으로 기동
+.\scripts\run-single.ps1 -Heap 256m -GcLog -Port 8080
+
+# 플랫폼 스레드 비교
+.\scripts\run-single.ps1 -Heap 256m -GcLog -PlatformThreads -Port 8080
+```
+
+부하 예시 (학습 순서):
+
+```powershell
+# 1) 객체 할당 많음 — 좌석맵
+$env:VUS="200"; $env:DURATION="3m"; $env:EXP="jvm-seats-vt-on"
+k6 run k6/seats-load-test.js
+
+# 2) VT OFF — application.yaml 또는 -PlatformThreads 후 동일 k6
+$env:EXP="jvm-seats-vt-off"
+k6 run k6/seats-load-test.js
+
+# 3) sleep API — DB 없이 JVM/Tomcat만
+$env:VUS="2000"; $env:DURATION="30s"; $env:EXP="jvm-threads-vt-on"
+k6 run k6/threads-load-test.js
+```
+
+Grafana **ticketReserve 실험 모니터**에서 같이 볼 패널:
+
+- **JVM heap** — used/max 톱니(Young GC), 급락(Mixed/Full)
+- **GC pause count rate** — 초당 GC 횟수 (`action=end of minor GC` 등)
+- **GC pause max** — STW 최대 시간 → HTTP p95 스파이크와 시간 맞춰 보기
+- **GC heap allocate rate** — 할당 속도 + `live after GC`
+- **GC pause time rate** — pause 초/초 (부하 대비 GC 비용)
+
+gc.log에서 `Pause Young` / `Pause Mixed` 줄을 k6 시작 시각과 맞추면 “이론 → 눈” 연결에 좋습니다.
+
+Prometheus에 `jvm_gc_*`가 없으면 앱 기동 후 `http://localhost:8080/actuator/prometheus`에서 `jvm_gc` 검색으로 확인하세요.
+
 ### 낙관적 vs 비관적 락 실험
 
 가설: **성공 건수는 비슷**하고, 낙관적은 **p95·waiting이 낮으며**, 비관적은 lock wait로 꼬리 지연이 길다.
@@ -189,7 +235,7 @@ docker compose up -d prometheus grafana
 | http://localhost:3000 | Grafana (admin / admin) |
 
 Grafana 폴더 `ticketReserve` → 대시보드 **ticketReserve 실험 모니터**.  
-k6 돌리는 동안 HTTP RPS·p95, 409, Hikari 풀, 톰캣 스레드, 좌석맵 캐시 hit/miss를 같이 보면 됩니다.
+k6 돌리는 동안 HTTP RPS·p95, 409, Hikari 풀, 톰캣 스레드, 좌석맵 캐시 hit/miss, **JVM heap·GC pause**를 같이 보면 됩니다.
 
 Prometheus는 Docker에서 호스트 앱을 `host.docker.internal:8080`으로 긁습니다. Status → Targets가 UP이어야 합니다.
 
@@ -247,6 +293,7 @@ k6 run k6/booking-load-test.js
 | `docs/reports/redis-seatmap-experiment-report.canvas.tsx` | Redis 좌석맵 캐시 |
 | `docs/reports/cache-stampede-experiment-report.canvas.tsx` | 캐시 스탬피드 · single-flight |
 | `docs/reports/redis-distributed-lock-experiment-report.canvas.tsx` | Redis 분산 락 · 3노드 PoC |
+| `docs/reports/jvm-gc-experiment-report.canvas.tsx` | JVM · GC · 힙 256m vs 512m · VT A/B |
 | `docs/reports/daily-experiment-report.canvas.tsx` | 7월 초반 일별 요약 |
 
 측정 시 권장: 워밍업 run → 본측정 2회 이상 → `k6/results` JSON 비교.

@@ -1,0 +1,51 @@
+{
+  "experiment": {
+    "name": "jvm-seats-vt-off",
+    "vus": 200,
+    "duration": "3m",
+    "baseUrl": "http://localhost:8080",
+    "baseUrls": [
+      "http://localhost:8080"
+    ],
+    "endpoint": "/api/sales/1/seats?seatGrade=R",
+    "salesId": 1,
+    "seatGrade": "R",
+    "savedAt": "2026-09-02T13:10:35.668Z"
+  },
+  "seats": {
+    "success": 2267002,
+    "failed": 0,
+    "successRate": 1
+  },
+  "checks": {
+    "getSeats": 2267002
+  },
+  "steps": {
+    "getSeats": null
+  },
+  "http": {
+    "requests": 2267002,
+    "rps": 12593.554668625915,
+    "failedRate": 0,
+    "durationMs": {
+      "avg": 15.19798375987212,
+      "med": 13.6857,
+      "p90": 22.904,
+      "p95": 27.8527,
+      "max": 930.6372
+    },
+    "waitingMs": {
+      "avg": 14.535223200111572,
+      "p95": 26.4186,
+      "max": 930.6372
+    }
+  },
+  "iteration": {
+    "count": 2267002,
+    "durationMs": {
+      "avg": 15.820850290867043,
+      "p95": 29.1609,
+      "max": 930.6372
+    }
+  }
+}

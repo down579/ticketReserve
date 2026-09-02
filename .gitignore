@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### JVM GC logs (run-single.ps1 -GcLog) ###
+logs/

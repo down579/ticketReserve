@@ -88,6 +88,13 @@ const experiments = [
     oneLiner: "3노드 + coordinator=redis PoC. 유효 run p95 ~27ms, RPS ~11.7k. none/local A/B 없음.",
     metric: "3대 · p95 ~27ms",
   },
+  {
+    when: "09-02",
+    topic: "JVM · GC",
+    file: "jvm-gc-experiment-report.canvas.tsx",
+    oneLiner: "힙 512m에서 GC count peak 절반(4.7→2.25/s), p95 소폭↓. VT ON/OFF 차이 없음.",
+    metric: "256m p95 26ms → 512m 23ms",
+  },
 ];
 
 export default function ExperimentSummaryReport() {
@@ -101,7 +108,7 @@ export default function ExperimentSummaryReport() {
           2026-07-22 ~ 08-31 · 개별 보고서 취합 · 로컬 Windows/k6 · 상대 비교 목적(절대 SLA 아님)
         </Text>
         <Row gap={8} wrap>
-          <Pill tone="info">10개 주제</Pill>
+          <Pill tone="info">11개 주제</Pill>
           <Pill tone="success">정합성: 더블부킹 없음</Pill>
           <Pill tone="warning">병목은 스레드 → DB/락 → 캐시로 이동</Pill>
         </Row>
@@ -117,7 +124,7 @@ export default function ExperimentSummaryReport() {
 
       <Grid columns={4} gap={12}>
         <Stat label="실험 기간" value="7/22–8/26" tone="info" />
-        <Stat label="주제 수" value="10" tone="info" />
+        <Stat label="주제 수" value="11" tone="info" />
         <Stat label="VT sleep 배율" value="~2.8×" tone="success" />
         <Stat label="조회 Redis 배율" value="~1.4×" tone="success" />
       </Grid>

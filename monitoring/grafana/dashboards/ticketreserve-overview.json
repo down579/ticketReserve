@@ -219,13 +219,13 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "jvm_memory_used_bytes{area=\"heap\"}",
-          "legendFormat": "used {{id}}",
+          "legendFormat": "used {{instance}}",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "jvm_memory_max_bytes{area=\"heap\"}",
-          "legendFormat": "max {{id}}",
+          "legendFormat": "max {{instance}}",
           "refId": "B"
         }
       ]
@@ -259,8 +259,102 @@
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "jvm_threads_live_threads",
-          "legendFormat": "jvm threads",
+          "legendFormat": "jvm threads {{instance}}",
           "refId": "C"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "id": 10,
+      "title": "GC pause count rate (5s window)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (instance, action) (rate(jvm_gc_pause_seconds_count[5s]))",
+          "legendFormat": "{{instance}} {{action}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+      "id": 11,
+      "title": "GC pause max (seconds)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "jvm_gc_pause_seconds_max",
+          "legendFormat": "{{instance}} {{action}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 48 },
+      "id": 12,
+      "title": "GC heap allocate rate + live data size",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(jvm_gc_memory_allocated_bytes_total[5s])",
+          "legendFormat": "alloc/s {{instance}}",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "jvm_gc_live_data_size_bytes",
+          "legendFormat": "live after GC {{instance}}",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 48 },
+      "id": 13,
+      "title": "GC pause time rate (STW fraction, 5s)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (instance) (rate(jvm_gc_pause_seconds_sum[5s]))",
+          "legendFormat": "pause s/s {{instance}}",
+          "refId": "A"
         }
       ]
     }
